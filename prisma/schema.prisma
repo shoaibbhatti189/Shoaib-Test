@@ -1,0 +1,95 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String    @id @default(uuid())
+  username      String    @unique
+  password_hash String
+  role          String    // "admin" or "staff"
+  employee_id   String?   
+  employee      Employee? @relation(fields: [employee_id], references: [id])
+  created_at    DateTime  @default(now())
+  updated_at    DateTime  @updatedAt
+}
+
+model Employee {
+  id                    String                 @id @default(uuid())
+  name                  String
+  role_title            String
+  hourly_rate           Float                
+  hire_date             DateTime
+  is_active             Boolean                @default(true)
+  created_at            DateTime               @default(now())
+  updated_at            DateTime               @updatedAt
+  users                 User[]
+  attendance            Attendance[]
+  paychecks             Paycheck[]
+  inventory_transactions InventoryTransaction[]
+}
+
+model Attendance {
+  id          String   @id @default(uuid())
+  employee_id String   
+  employee    Employee @relation(fields: [employee_id], references: [id])
+  date        DateTime 
+  hours_worked Float  
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+}
+
+model PayrollRun {
+  id             String     @id @default(uuid())
+  period_start   DateTime   
+  period_end     DateTime   
+  date_processed DateTime?  
+  status         String     // "draft" or "finalized"
+  created_at     DateTime   @default(now())
+  updated_at     DateTime   @updatedAt
+  paychecks      Paycheck[]
+}
+
+model Paycheck {
+  id             String     @id @default(uuid())
+  payroll_run_id String     
+  payroll_run    PayrollRun @relation(fields: [payroll_run_id], references: [id])
+  employee_id    String     
+  employee       Employee   @relation(fields: [employee_id], references: [id])
+  gross_pay      Float    
+  deductions     Float    
+  net_pay        Float    
+  created_at     DateTime   @default(now())
+  updated_at     DateTime   @updatedAt
+}
+
+model Product {
+  id                   String                 @id @default(uuid())
+  name                 String
+  sku                  String                 @unique
+  quantity_in_stock    Int                    @default(0)
+  unit_cost            Float                
+  unit_price           Float                
+  low_stock_threshold  Int                    @default(10)
+  is_active            Boolean                @default(true)
+  created_at           DateTime               @default(now())
+  updated_at           DateTime               @updatedAt
+  inventory_transactions InventoryTransaction[]
+}
+
+model InventoryTransaction {
+  id            String    @id @default(uuid())
+  product_id    String    
+  product       Product   @relation(fields: [product_id], references: [id])
+  change_amount Int       
+  reason        String    // "sale", "restock", "damage", "adjustment"
+  employee_id   String?   
+  employee      Employee? @relation(fields: [employee_id], references: [id])
+  date          DateTime  @default(now())
+  created_at    DateTime  @default(now())
+  updated_at    DateTime  @updatedAt
+}
