@@ -1,5 +1,6 @@
 require('dotenv').config();
 const express = require('express');
+const path = require('path');
 const prisma = require('./lib/prisma');
 
 const authRoutes = require('./routes/auth');
@@ -14,7 +15,13 @@ const PORT = process.env.PORT || 3000;
 
 app.use(express.json());
 
-// Auth routes mounted both at /auth/* and at root /login, /logout, /setup-admin
+// Serve the frontend static files from /public
+app.use(express.static(path.join(__dirname, 'public')));
+
+// Root → redirect to login
+app.get('/', (req, res) => res.redirect('/login.html'));
+
+// Auth routes
 app.use('/auth', authRoutes);
 app.post('/login', (req, res, next) => { req.url = '/login'; authRoutes(req, res, next); });
 app.post('/logout', (req, res, next) => { req.url = '/logout'; authRoutes(req, res, next); });
@@ -26,7 +33,6 @@ app.use('/products', productRoutes);
 app.use('/inventory', inventoryRoutes);
 app.use('/payroll', payrollRoutes);
 
-// Health check — verifies live DB connection using shared singleton
 app.get('/health', async (req, res) => {
   try {
     await prisma.$queryRaw`SELECT 1`;
@@ -42,5 +48,5 @@ app.use((err, req, res, next) => {
 });
 
 app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+  console.log(`Server running → http://localhost:${PORT}`);
 });
