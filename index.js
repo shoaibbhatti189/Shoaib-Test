@@ -10,8 +10,7 @@ const attendanceRoutes= require('./routes/attendance');
 const productRoutes   = require('./routes/products');
 const inventoryRoutes = require('./routes/inventory');
 const payrollRoutes   = require('./routes/payroll');
-// Phase 3 — added after Phase 2 approval
-// const checkoutRoutes  = require('./routes/checkout');
+const checkoutRoutes  = require('./routes/checkout');
 // Phase 4 — added after Phase 3 approval
 // const companyRoutes   = require('./routes/companies');
 // const userRoutes      = require('./routes/users');
@@ -41,7 +40,7 @@ app.use('/attendance', attendanceRoutes);
 app.use('/products',   productRoutes);
 app.use('/inventory',  inventoryRoutes);
 app.use('/payroll',    payrollRoutes);
-// app.use('/checkout',   checkoutRoutes);  // Phase 3
+app.use('/checkout',   checkoutRoutes);  // Phase 3
 // app.use('/companies',  companyRoutes);   // Phase 4
 // app.use('/users',      userRoutes);      // Phase 4
 
