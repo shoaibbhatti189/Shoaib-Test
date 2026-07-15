@@ -38,7 +38,7 @@ Send a POST request to `http://localhost:3000/setup-admin` (only for initial use
 ```json
 {
   "username": "admin",
-  "password": "password123"
+  "password": "admin123"
 }
 ```
 Then POST to `http://localhost:3000/login` to receive your JWT token. Add this token to the `Authorization` header as `Bearer <token>` for subsequent requests in tools like Postman.
