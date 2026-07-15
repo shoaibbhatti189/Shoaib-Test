@@ -1,10 +1,9 @@
 const express = require('express');
 const prisma   = require('../lib/prisma');
-const { authenticateToken, requireRole } = require('../middleware/auth');
+const { authenticateToken }     = require('../middleware/auth');
+const { can }                   = require('../middleware/permissions');
 
 const router = express.Router();
-
-// Helper: builds the company WHERE fragment
 const co = (req) => req.companyId ? { company_id: req.companyId } : {};
 
 // GET /employees/me — own employee record (any authenticated user)
@@ -26,12 +25,14 @@ router.get('/me', authenticateToken, async (req, res) => {
   }
 });
 
-// GET /employees — all active employees (admin only in Phase 1)
-router.get('/', authenticateToken, requireRole('admin', 'hr', 'manager', 'super_admin'), async (req, res) => {
+// GET /employees — list all active employees
+// super_admin, admin, hr, manager: full list
+// employee: blocked (use /me instead)
+router.get('/', authenticateToken, can('employees', 'read'), async (req, res) => {
   try {
     const employees = await prisma.employee.findMany({
-      where: { is_active: true, ...co(req) },
-      orderBy: { name: 'asc' }
+      where:   { is_active: true, ...co(req) },
+      orderBy: { name: 'asc' },
     });
     res.json(employees);
   } catch (error) {
@@ -40,8 +41,9 @@ router.get('/', authenticateToken, requireRole('admin', 'hr', 'manager', 'super_
   }
 });
 
-// POST /employees — create employee (admin, hr, super_admin)
-router.post('/', authenticateToken, requireRole('admin', 'hr', 'super_admin'), async (req, res) => {
+// POST /employees — create a new employee
+// super_admin, admin, hr
+router.post('/', authenticateToken, can('employees', 'write'), async (req, res) => {
   try {
     const { name, role_title, hourly_rate, hire_date } = req.body;
 
@@ -66,11 +68,11 @@ router.post('/', authenticateToken, requireRole('admin', 'hr', 'super_admin'), a
 
     const employee = await prisma.employee.create({
       data: {
-        company_id: req.companyId,
-        name:       name.trim(),
-        role_title: role_title.trim(),
+        company_id:  req.companyId,
+        name:        name.trim(),
+        role_title:  role_title.trim(),
         hourly_rate: rate,
-        hire_date:  parsedDate
+        hire_date:   parsedDate,
       }
     });
     res.status(201).json(employee);
@@ -82,8 +84,10 @@ router.post('/', authenticateToken, requireRole('admin', 'hr', 'super_admin'), a
   }
 });
 
-// GET /employees/:id — single employee (scoped)
-router.get('/:id', authenticateToken, requireRole('admin', 'hr', 'manager', 'super_admin'), async (req, res) => {
+// GET /employees/:id — single employee by ID
+// super_admin, admin, hr, manager: any employee in company
+// employee: blocked (use /me)
+router.get('/:id', authenticateToken, can('employees', 'read'), async (req, res) => {
   try {
     const employee = await prisma.employee.findFirst({
       where: { id: req.params.id, ...co(req) }
@@ -97,10 +101,10 @@ router.get('/:id', authenticateToken, requireRole('admin', 'hr', 'manager', 'sup
   }
 });
 
-// PUT /employees/:id — update employee (admin, hr, super_admin)
-router.put('/:id', authenticateToken, requireRole('admin', 'hr', 'super_admin'), async (req, res) => {
+// PUT /employees/:id — update employee details
+// super_admin, admin, hr
+router.put('/:id', authenticateToken, can('employees', 'write'), async (req, res) => {
   try {
-    // Verify employee belongs to same company before updating
     const existing = await prisma.employee.findFirst({
       where: { id: req.params.id, ...co(req) }
     });
@@ -109,8 +113,8 @@ router.put('/:id', authenticateToken, requireRole('admin', 'hr', 'super_admin'),
 
     const { name, role_title, hourly_rate, is_active } = req.body;
     const data = {};
-    if (name       !== undefined) data.name       = name.trim();
-    if (role_title !== undefined) data.role_title  = role_title.trim();
+    if (name        !== undefined) data.name        = name.trim();
+    if (role_title  !== undefined) data.role_title   = role_title.trim();
     if (hourly_rate !== undefined) {
       const rate = parseFloat(hourly_rate);
       if (isNaN(rate) || rate < 0)
@@ -132,9 +136,15 @@ router.put('/:id', authenticateToken, requireRole('admin', 'hr', 'super_admin'),
   }
 });
 
-// DELETE /employees/:id — soft-deactivate (admin, super_admin)
-router.delete('/:id', authenticateToken, requireRole('admin', 'super_admin'), async (req, res) => {
+// DELETE /employees/:id — soft-deactivate
+// super_admin, admin (hr cannot deactivate — only create/edit)
+router.delete('/:id', authenticateToken, can('employees', 'delete'), async (req, res) => {
   try {
+    // hr has 'full' on employees which resolves to LEVEL 5 (≥ write=4) → passes can()
+    // But per spec, only admin/super_admin should deactivate. Apply explicit guard:
+    if (req.user.role === 'hr')
+      return res.status(403).json({ error: 'HR cannot deactivate employees. Contact an admin.' });
+
     const existing = await prisma.employee.findFirst({
       where: { id: req.params.id, ...co(req) }
     });
@@ -143,7 +153,7 @@ router.delete('/:id', authenticateToken, requireRole('admin', 'super_admin'), as
 
     const employee = await prisma.employee.update({
       where: { id: req.params.id },
-      data:  { is_active: false }
+      data:  { is_active: false },
     });
     res.json({ message: `${employee.name} has been deactivated.`, employee });
   } catch (error) {

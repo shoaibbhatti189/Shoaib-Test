@@ -1,18 +1,18 @@
 const express = require('express');
 const prisma   = require('../lib/prisma');
-const { authenticateToken, requireRole } = require('../middleware/auth');
+const { authenticateToken } = require('../middleware/auth');
+const { can }               = require('../middleware/permissions');
 
 const router = express.Router();
-
-// Helper: company scope fragment
 const co = (req) => req.companyId ? { company_id: req.companyId } : {};
 
-// GET /products — all active products (any authenticated user)
-router.get('/', authenticateToken, async (req, res) => {
+// GET /products — all active products
+// All roles can read the catalog (employees need it for cart/sale flow)
+router.get('/', authenticateToken, can('products', 'read'), async (req, res) => {
   try {
     const products = await prisma.product.findMany({
-      where: { is_active: true, ...co(req) },
-      orderBy: { name: 'asc' }
+      where:   { is_active: true, ...co(req) },
+      orderBy: { name: 'asc' },
     });
     res.json(products);
   } catch (error) {
@@ -21,22 +21,23 @@ router.get('/', authenticateToken, async (req, res) => {
   }
 });
 
-// GET /products/low-stock — products at or below threshold (any authenticated user)
-router.get('/low-stock', authenticateToken, async (req, res) => {
+// GET /products/low-stock — products at or below their threshold
+// admin, manager, super_admin (not employee — they don't need stock alerts)
+router.get('/low-stock', authenticateToken, can('inventory', 'read'), async (req, res) => {
   try {
     const all = await prisma.product.findMany({
       where: { is_active: true, ...co(req) }
     });
-    const lowStock = all.filter(p => p.quantity_in_stock <= p.low_stock_threshold);
-    res.json(lowStock);
+    res.json(all.filter(p => p.quantity_in_stock <= p.low_stock_threshold));
   } catch (error) {
     console.error('[GET /products/low-stock]', error);
     res.status(500).json({ error: 'Failed to fetch low-stock products.' });
   }
 });
 
-// POST /products — create product (admin, manager, super_admin)
-router.post('/', authenticateToken, requireRole('admin', 'manager', 'super_admin'), async (req, res) => {
+// POST /products — create product
+// super_admin, admin, manager
+router.post('/', authenticateToken, can('products', 'write'), async (req, res) => {
   try {
     const { name, sku, unit_cost, unit_price, low_stock_threshold } = req.body;
 
@@ -59,7 +60,7 @@ router.post('/', authenticateToken, requireRole('admin', 'manager', 'super_admin
         unit_cost:           cost,
         unit_price:          price,
         low_stock_threshold: parseInt(low_stock_threshold ?? 10, 10),
-        quantity_in_stock:   0
+        quantity_in_stock:   0,
       }
     });
     res.status(201).json(product);
@@ -71,10 +72,10 @@ router.post('/', authenticateToken, requireRole('admin', 'manager', 'super_admin
   }
 });
 
-// PUT /products/:id — update product (admin, manager, super_admin)
-router.put('/:id', authenticateToken, requireRole('admin', 'manager', 'super_admin'), async (req, res) => {
+// PUT /products/:id — update product details (never touch quantity_in_stock directly)
+// super_admin, admin, manager
+router.put('/:id', authenticateToken, can('products', 'write'), async (req, res) => {
   try {
-    // Verify ownership before update
     const existing = await prisma.product.findFirst({
       where: { id: req.params.id, ...co(req) }
     });
@@ -102,9 +103,14 @@ router.put('/:id', authenticateToken, requireRole('admin', 'manager', 'super_adm
   }
 });
 
-// DELETE /products/:id — soft-deactivate (admin, super_admin)
-router.delete('/:id', authenticateToken, requireRole('admin', 'super_admin'), async (req, res) => {
+// DELETE /products/:id — soft-deactivate
+// super_admin, admin (managers can create/edit but not deactivate)
+router.delete('/:id', authenticateToken, can('products', 'delete'), async (req, res) => {
   try {
+    // Per spec: deactivation is admin/super_admin only
+    if (req.user.role === 'manager')
+      return res.status(403).json({ error: 'Managers cannot deactivate products. Contact an admin.' });
+
     const existing = await prisma.product.findFirst({
       where: { id: req.params.id, ...co(req) }
     });
@@ -113,7 +119,7 @@ router.delete('/:id', authenticateToken, requireRole('admin', 'super_admin'), as
 
     const product = await prisma.product.update({
       where: { id: req.params.id },
-      data:  { is_active: false }
+      data:  { is_active: false },
     });
     res.json({ message: `${product.name} deactivated.`, product });
   } catch (error) {

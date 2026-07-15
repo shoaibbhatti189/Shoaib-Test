@@ -1,16 +1,15 @@
 const express = require('express');
 const prisma   = require('../lib/prisma');
-const { authenticateToken, requireRole } = require('../middleware/auth');
+const { authenticateToken } = require('../middleware/auth');
+const { can }               = require('../middleware/permissions');
 
 const router = express.Router();
-
 const VALID_REASONS = ['sale', 'restock', 'damage', 'adjustment'];
-
-// Helper: company scope fragment
 const co = (req) => req.companyId ? { company_id: req.companyId } : {};
 
-// POST /inventory/transaction — record a stock movement (admin, manager, super_admin)
-router.post('/transaction', authenticateToken, requireRole('admin', 'manager', 'super_admin'), async (req, res) => {
+// POST /inventory/transaction — record a stock movement
+// super_admin, admin, manager (employees use the cart flow instead)
+router.post('/transaction', authenticateToken, can('inventory', 'write'), async (req, res) => {
   try {
     const { product_id, change_amount, reason } = req.body;
     const employee_id = req.user.employee_id || null;
@@ -33,16 +32,9 @@ router.post('/transaction', authenticateToken, requireRole('admin', 'manager', '
 
     const result = await prisma.$transaction(async (tx) => {
       const transaction = await tx.inventoryTransaction.create({
-        data: {
-          company_id:    req.companyId,
-          product_id,
-          change_amount,
-          reason,
-          employee_id
-        }
+        data: { company_id: req.companyId, product_id, change_amount, reason, employee_id }
       });
 
-      // Recalculate stock by summing all change_amounts for this product
       const aggregate = await tx.inventoryTransaction.aggregate({
         _sum: { change_amount: true },
         where: { product_id }
@@ -67,18 +59,18 @@ router.post('/transaction', authenticateToken, requireRole('admin', 'manager', '
   }
 });
 
-// GET /inventory/transactions — transaction log (admin, manager, super_admin)
-router.get('/transactions', authenticateToken, requireRole('admin', 'manager', 'super_admin'), async (req, res) => {
+// GET /inventory/transactions — transaction log
+// super_admin, admin, manager (hr and employee cannot view raw transaction log)
+router.get('/transactions', authenticateToken, can('inventory', 'read'), async (req, res) => {
   try {
     const { product_id } = req.query;
-
     const where = { ...co(req) };
     if (product_id) where.product_id = product_id;
 
     const transactions = await prisma.inventoryTransaction.findMany({
       where,
       orderBy: { date: 'desc' },
-      take: 200
+      take: 200,
     });
     res.json(transactions);
   } catch (error) {

@@ -1,27 +1,25 @@
 const express = require('express');
 const prisma   = require('../lib/prisma');
-const { authenticateToken, requireRole } = require('../middleware/auth');
+const { authenticateToken } = require('../middleware/auth');
+const { can }               = require('../middleware/permissions');
 
 const router = express.Router();
-
-// Helper: company scope fragment
 const co = (req) => req.companyId ? { company_id: req.companyId } : {};
 
-// POST /attendance — log hours
-// admin/hr/super_admin: can specify any employee_id
-// manager: can specify employees in their company
-// employee: always uses their own employee_id
-router.post('/', authenticateToken, async (req, res) => {
+// POST /attendance — log attendance hours
+// super_admin, admin, hr: can log for any employee in their company
+// manager: cannot log (read-only on attendance per spec)
+// employee (write_own): logs only for themselves
+router.post('/', authenticateToken, can('attendance', 'write', { allowOwn: true }), async (req, res) => {
   try {
     let { employee_id, date, hours_worked } = req.body;
-
     const role = req.user.role;
 
-    // Determine effective employee_id
-    if (role === 'employee') {
+    // Ownership enforcement: employees always use their own ID
+    if (req.ownOnly) {
       employee_id = req.user.employee_id;
       if (!employee_id)
-        return res.status(400).json({ error: 'Your account has no employee record linked.' });
+        return res.status(400).json({ error: 'Your account has no linked employee record.' });
     } else if (!employee_id) {
       return res.status(400).json({ error: 'employee_id is required.' });
     }
@@ -33,7 +31,7 @@ router.post('/', authenticateToken, async (req, res) => {
     if (isNaN(hours) || hours < 0 || hours > 24)
       return res.status(400).json({ error: 'hours_worked must be between 0 and 24.' });
 
-    // Verify the employee belongs to this company
+    // Verify the target employee belongs to the same company
     const employee = await prisma.employee.findFirst({
       where: { id: employee_id, ...co(req) }
     });
@@ -49,7 +47,7 @@ router.post('/', authenticateToken, async (req, res) => {
         company_id:   req.companyId,
         employee_id,
         date:         parsedDate,
-        hours_worked: hours
+        hours_worked: hours,
       }
     });
     res.status(201).json(attendance);
@@ -60,18 +58,17 @@ router.post('/', authenticateToken, async (req, res) => {
 });
 
 // GET /attendance/:employee_id — fetch records for an employee
-// admin/hr/manager/super_admin: any employee in their company
-// employee: own records only
-router.get('/:employee_id', authenticateToken, async (req, res) => {
+// super_admin, admin, hr, manager: any employee in their company
+// employee (read_own): only their own records
+router.get('/:employee_id', authenticateToken, can('attendance', 'read', { allowOwn: true }), async (req, res) => {
   try {
     const { employee_id } = req.params;
-    const role = req.user.role;
 
-    // Employees may only view their own records
-    if (role === 'employee' && req.user.employee_id !== employee_id)
+    // Ownership enforcement
+    if (req.ownOnly && req.user.employee_id !== employee_id)
       return res.status(403).json({ error: 'You can only view your own attendance records.' });
 
-    // Verify the employee belongs to this company
+    // Verify the employee belongs to the same company
     const employee = await prisma.employee.findFirst({
       where: { id: employee_id, ...co(req) }
     });
@@ -80,7 +77,7 @@ router.get('/:employee_id', authenticateToken, async (req, res) => {
 
     const records = await prisma.attendance.findMany({
       where:   { employee_id, ...co(req) },
-      orderBy: { date: 'desc' }
+      orderBy: { date: 'desc' },
     });
     res.json(records);
   } catch (error) {
