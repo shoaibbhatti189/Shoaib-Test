@@ -44,14 +44,15 @@ async function apiFetch(path, options = {}) {
   }
 }
 
-/* ─── Sidebar ─── */
 const NAV = [
-  { href: '/dashboard.html',  icon: '⊞', label: 'Dashboard',  roles: ['admin','staff'] },
-  { href: '/employees.html',  icon: '👥', label: 'Employees',  roles: ['admin','staff'] },
-  { href: '/attendance.html', icon: '📋', label: 'Attendance', roles: ['admin','staff'] },
-  { href: '/products.html',   icon: '📦', label: 'Products',   roles: ['admin','staff'] },
-  { href: '/inventory.html',  icon: '🔄', label: 'Inventory',  roles: ['admin','staff'] },
-  { href: '/payroll.html',    icon: '💰', label: 'Payroll',    roles: ['admin'] },
+  { href: '/dashboard.html',  icon: '⊞', label: 'Dashboard',  roles: ['super_admin', 'admin', 'hr', 'manager', 'employee', 'staff'] },
+  { href: '/employees.html',  icon: '👥', label: 'Employees',  roles: ['super_admin', 'admin', 'hr', 'manager', 'employee', 'staff'] },
+  { href: '/attendance.html', icon: '📋', label: 'Attendance', roles: ['super_admin', 'admin', 'hr', 'manager', 'employee', 'staff'] },
+  { href: '/products.html',   icon: '📦', label: 'Products',   roles: ['super_admin', 'admin', 'hr', 'manager', 'employee', 'staff'] },
+  { href: '/inventory.html',  icon: '🔄', label: 'Inventory',  roles: ['super_admin', 'admin', 'manager', 'staff'] },
+  { href: '/payroll.html',    icon: '💰', label: 'Payroll',    roles: ['super_admin', 'admin', 'employee', 'staff'] },
+  { href: '/checkout.html',   icon: '🛒', label: 'Checkout',   roles: ['super_admin', 'admin', 'hr', 'manager', 'employee', 'staff'] },
+  { href: '/users.html',      icon: '⚙️', label: 'Users',      roles: ['super_admin', 'admin'] },
 ];
 
 function renderSidebar() {

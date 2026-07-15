@@ -42,9 +42,13 @@ async function loadProducts() {
     const stockBadge = isLow
       ? `<span class="badge badge-red">${p.quantity_in_stock}</span>`
       : `<span class="badge badge-green">${p.quantity_in_stock}</span>`;
-    const actionBtn = role === 'admin'
-      ? `<button class="btn btn-danger-soft btn-sm" onclick="deactivate('${p.id}', '${p.name.replace(/'/g,"\\'")}')">Deactivate</button>`
-      : '';
+    
+    let actionBtn = `<button class="btn btn-primary-soft btn-sm" onclick="addToCart('${p.id}', '${p.name.replace(/'/g,"\\'")}')" style="margin-right: 4px;">🛒 Add to Cart</button>`;
+    
+    if (['manager', 'admin', 'super_admin'].includes(role)) {
+      actionBtn += `<button class="btn btn-danger-soft btn-sm" onclick="deactivate('${p.id}', '${p.name.replace(/'/g,"\\'")}')">Deactivate</button>`;
+    }
+    
     return `<tr>
       <td><strong>${p.name}</strong></td>
       <td class="td-mono">${p.sku}</td>
@@ -90,6 +94,26 @@ async function deactivate(id, name) {
   if (!confirm(`Deactivate "${name}"? It will be hidden from the catalog.`)) return;
   const r = await apiFetch(`/products/${id}`, { method: 'DELETE' });
   if (r && r.ok) { showToast(`${name} deactivated.`, 'warning'); loadProducts(); }
+}
+
+async function addToCart(id, name) {
+  const quantity = prompt(`How many "${name}" would you like to add to cart?`, "1");
+  if (!quantity) return;
+  
+  const qty = parseInt(quantity, 10);
+  if (isNaN(qty) || qty <= 0) return showToast('Invalid quantity', 'error');
+
+  const r = await apiFetch('/checkout/cart', {
+    method: 'POST',
+    body: JSON.stringify({ product_id: id, quantity: qty })
+  });
+
+  if (r && r.ok) {
+    showToast(`Added ${qty}x ${name} to cart.`);
+  } else if (r) {
+    const d = await r.json();
+    showToast(d.error || 'Failed to add to cart.', 'error');
+  }
 }
 
 loadProducts();

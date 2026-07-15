@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Checkout — PayrollPro</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+<div class="layout">
+  <aside id="sidebar" class="sidebar"></aside>
+  <main class="main">
+
+    <div class="page-header-row">
+      <div>
+        <h1>Checkout</h1>
+        <p class="page-subtitle">Manage cart and finalize transactions</p>
+      </div>
+      <button class="btn btn-primary" onclick="finalizeCheckout()">Finalize Checkout</button>
+    </div>
+
+    <div id="overrideModal" class="card section" style="display:none; border: 2px solid #ff4d4f;">
+      <div class="card-title" style="color: #ff4d4f;">Manager Override Required</div>
+      <p>This action (<span id="overrideAction"></span>) requires a manager's PIN.</p>
+      <div class="form-grid">
+        <div class="form-group">
+          <label for="overridePin">Manager PIN</label>
+          <input id="overridePin" type="password" placeholder="Enter PIN">
+        </div>
+      </div>
+      <div class="form-actions" style="margin-top:16px;">
+        <button class="btn btn-primary" onclick="submitOverride()">Submit Override</button>
+        <button class="btn btn-outline" onclick="cancelOverride()">Cancel</button>
+      </div>
+    </div>
+
+    <div class="table-wrap" style="margin-top:20px;">
+      <table>
+        <thead><tr><th>Product Name</th><th>SKU</th><th>Quantity</th><th>Unit Price</th><th>Subtotal</th><th></th></tr></thead>
+        <tbody id="cartTable"><tr class="loading-row"><td colspan="6">Loading cart…</td></tr></tbody>
+      </table>
+    </div>
+
+  </main>
+</div>
+<script src="/js/api.js"></script>
+<script src="/js/checkout.js"></script>
+</body>
+</html>
