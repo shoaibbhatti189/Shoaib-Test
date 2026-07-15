@@ -12,8 +12,8 @@ const inventoryRoutes = require('./routes/inventory');
 const payrollRoutes   = require('./routes/payroll');
 const checkoutRoutes  = require('./routes/checkout');
 // Phase 4 — added after Phase 3 approval
-// const companyRoutes   = require('./routes/companies');
-// const userRoutes      = require('./routes/users');
+const companyRoutes   = require('./routes/companies');
+const userRoutes      = require('./routes/users');
 
 const app  = express();
 const PORT = process.env.PORT || 3000;
@@ -41,8 +41,8 @@ app.use('/products',   productRoutes);
 app.use('/inventory',  inventoryRoutes);
 app.use('/payroll',    payrollRoutes);
 app.use('/checkout',   checkoutRoutes);  // Phase 3
-// app.use('/companies',  companyRoutes);   // Phase 4
-// app.use('/users',      userRoutes);      // Phase 4
+app.use('/companies',  companyRoutes);   // Phase 4
+app.use('/users',      userRoutes);      // Phase 4
 
 // ── Health check ──────────────────────────────────────────────────
 app.get('/health', async (req, res) => {
