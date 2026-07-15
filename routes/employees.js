@@ -1,17 +1,20 @@
 const express = require('express');
-const prisma = require('../lib/prisma');
+const prisma   = require('../lib/prisma');
 const { authenticateToken, requireRole } = require('../middleware/auth');
 
 const router = express.Router();
 
-// GET /employees/me — logged-in staff user's own employee record
+// Helper: builds the company WHERE fragment
+const co = (req) => req.companyId ? { company_id: req.companyId } : {};
+
+// GET /employees/me — own employee record (any authenticated user)
 router.get('/me', authenticateToken, async (req, res) => {
   try {
     if (!req.user.employee_id)
       return res.status(404).json({ error: 'No employee record is linked to your account.' });
 
-    const employee = await prisma.employee.findUnique({
-      where: { id: req.user.employee_id }
+    const employee = await prisma.employee.findFirst({
+      where: { id: req.user.employee_id, ...co(req) }
     });
     if (!employee)
       return res.status(404).json({ error: 'Employee record not found.' });
@@ -23,11 +26,11 @@ router.get('/me', authenticateToken, async (req, res) => {
   }
 });
 
-// GET /employees — all active employees (admin only)
-router.get('/', authenticateToken, requireRole('admin'), async (req, res) => {
+// GET /employees — all active employees (admin only in Phase 1)
+router.get('/', authenticateToken, requireRole('admin', 'hr', 'manager', 'super_admin'), async (req, res) => {
   try {
     const employees = await prisma.employee.findMany({
-      where: { is_active: true },
+      where: { is_active: true, ...co(req) },
       orderBy: { name: 'asc' }
     });
     res.json(employees);
@@ -37,94 +40,89 @@ router.get('/', authenticateToken, requireRole('admin'), async (req, res) => {
   }
 });
 
-// POST /employees — create a new employee (admin only)
-router.post('/', authenticateToken, requireRole('admin'), async (req, res) => {
+// POST /employees — create employee (admin, hr, super_admin)
+router.post('/', authenticateToken, requireRole('admin', 'hr', 'super_admin'), async (req, res) => {
   try {
     const { name, role_title, hourly_rate, hire_date } = req.body;
 
-    // Validate required fields
     const missing = [];
     if (!name)        missing.push('name');
     if (!role_title)  missing.push('role_title');
     if (!hourly_rate) missing.push('hourly_rate');
     if (!hire_date)   missing.push('hire_date');
-
-    if (missing.length > 0)
-      return res.status(400).json({
-        error: `Missing required fields: ${missing.join(', ')}`
-      });
+    if (missing.length)
+      return res.status(400).json({ error: `Missing required fields: ${missing.join(', ')}.` });
 
     const rate = parseFloat(hourly_rate);
     if (isNaN(rate) || rate < 0)
-      return res.status(400).json({ error: 'hourly_rate must be a positive number.' });
+      return res.status(400).json({ error: 'hourly_rate must be a non-negative number.' });
 
-    // Parse hire_date safely — append UTC noon to avoid timezone day-shift issues
     const parsedDate = new Date(`${hire_date}T12:00:00.000Z`);
     if (isNaN(parsedDate.getTime()))
-      return res.status(400).json({ error: 'hire_date is not a valid date. Use YYYY-MM-DD format.' });
+      return res.status(400).json({ error: 'hire_date must be in YYYY-MM-DD format.' });
+
+    if (!req.companyId)
+      return res.status(400).json({ error: 'Cannot create employee without a company context.' });
 
     const employee = await prisma.employee.create({
       data: {
-        name: name.trim(),
+        company_id: req.companyId,
+        name:       name.trim(),
         role_title: role_title.trim(),
         hourly_rate: rate,
-        hire_date: parsedDate
+        hire_date:  parsedDate
       }
     });
-
     res.status(201).json(employee);
   } catch (error) {
     console.error('[POST /employees]', error);
-
-    // Prisma unique constraint violation
     if (error.code === 'P2002')
-      return res.status(409).json({ error: 'An employee with this name already exists.' });
-
-    res.status(500).json({ error: 'Failed to create employee. Please try again.' });
+      return res.status(409).json({ error: 'An employee with this name already exists in your company.' });
+    res.status(500).json({ error: 'Failed to create employee.' });
   }
 });
 
-// GET /employees/:id — single employee (admin only)
-router.get('/:id', authenticateToken, requireRole('admin'), async (req, res) => {
+// GET /employees/:id — single employee (scoped)
+router.get('/:id', authenticateToken, requireRole('admin', 'hr', 'manager', 'super_admin'), async (req, res) => {
   try {
-    const employee = await prisma.employee.findUnique({
-      where: { id: req.params.id }
+    const employee = await prisma.employee.findFirst({
+      where: { id: req.params.id, ...co(req) }
     });
     if (!employee)
       return res.status(404).json({ error: 'Employee not found.' });
-
     res.json(employee);
   } catch (error) {
     console.error('[GET /employees/:id]', error);
-    if (error.code === 'P2023')
-      return res.status(400).json({ error: 'Invalid employee ID format.' });
     res.status(500).json({ error: 'Failed to fetch employee.' });
   }
 });
 
-// PUT /employees/:id — update employee fields (admin only)
-router.put('/:id', authenticateToken, requireRole('admin'), async (req, res) => {
+// PUT /employees/:id — update employee (admin, hr, super_admin)
+router.put('/:id', authenticateToken, requireRole('admin', 'hr', 'super_admin'), async (req, res) => {
   try {
-    const { name, role_title, hourly_rate, is_active } = req.body;
+    // Verify employee belongs to same company before updating
+    const existing = await prisma.employee.findFirst({
+      where: { id: req.params.id, ...co(req) }
+    });
+    if (!existing)
+      return res.status(404).json({ error: 'Employee not found.' });
 
+    const { name, role_title, hourly_rate, is_active } = req.body;
     const data = {};
     if (name       !== undefined) data.name       = name.trim();
     if (role_title !== undefined) data.role_title  = role_title.trim();
     if (hourly_rate !== undefined) {
       const rate = parseFloat(hourly_rate);
       if (isNaN(rate) || rate < 0)
-        return res.status(400).json({ error: 'hourly_rate must be a positive number.' });
+        return res.status(400).json({ error: 'hourly_rate must be a non-negative number.' });
       data.hourly_rate = rate;
     }
     if (is_active !== undefined) data.is_active = Boolean(is_active);
 
-    if (Object.keys(data).length === 0)
+    if (!Object.keys(data).length)
       return res.status(400).json({ error: 'No valid fields provided for update.' });
 
-    const employee = await prisma.employee.update({
-      where: { id: req.params.id },
-      data
-    });
+    const employee = await prisma.employee.update({ where: { id: req.params.id }, data });
     res.json(employee);
   } catch (error) {
     console.error('[PUT /employees/:id]', error);
@@ -134,18 +132,22 @@ router.put('/:id', authenticateToken, requireRole('admin'), async (req, res) => 
   }
 });
 
-// DELETE /employees/:id — soft-delete (set is_active = false) (admin only)
-router.delete('/:id', authenticateToken, requireRole('admin'), async (req, res) => {
+// DELETE /employees/:id — soft-deactivate (admin, super_admin)
+router.delete('/:id', authenticateToken, requireRole('admin', 'super_admin'), async (req, res) => {
   try {
+    const existing = await prisma.employee.findFirst({
+      where: { id: req.params.id, ...co(req) }
+    });
+    if (!existing)
+      return res.status(404).json({ error: 'Employee not found.' });
+
     const employee = await prisma.employee.update({
       where: { id: req.params.id },
-      data: { is_active: false }
+      data:  { is_active: false }
     });
     res.json({ message: `${employee.name} has been deactivated.`, employee });
   } catch (error) {
     console.error('[DELETE /employees/:id]', error);
-    if (error.code === 'P2025')
-      return res.status(404).json({ error: 'Employee not found.' });
     res.status(500).json({ error: 'Failed to deactivate employee.' });
   }
 });

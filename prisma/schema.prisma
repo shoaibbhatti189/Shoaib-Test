@@ -8,28 +8,59 @@ datasource db {
   directUrl = env("DIRECT_URL")
 }
 
+// ─── Company ──────────────────────────────────────────────────────────────────
+model Company {
+  id         String   @id @default(uuid()) @db.Uuid
+  name       String   @unique
+  is_active  Boolean  @default(true)
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  users                  User[]
+  employees              Employee[]
+  products               Product[]
+  attendance             Attendance[]
+  payroll_runs           PayrollRun[]
+  inventory_transactions InventoryTransaction[]
+  cart_items             CartItem[]
+  checkout_overrides     CheckoutOverride[]
+
+  @@map("companies")
+}
+
+// ─── User ─────────────────────────────────────────────────────────────────────
 model User {
   id            String    @id @default(uuid()) @db.Uuid
   username      String    @unique
   password_hash String
-  role          String    // "admin" or "staff"
+  role          String    // super_admin | admin | hr | manager | employee
+  company_id    String?   @db.Uuid  // null ONLY for super_admin
+  company       Company?  @relation(fields: [company_id], references: [id])
   employee_id   String?   @db.Uuid
   employee      Employee? @relation(fields: [employee_id], references: [id])
+  pin_code_hash String?   // bcrypt-hashed PIN — set for manager/admin override flow
   created_at    DateTime  @default(now())
   updated_at    DateTime  @updatedAt
+
+  requested_overrides  CheckoutOverride[] @relation("RequestedBy")
+  authorized_overrides CheckoutOverride[] @relation("AuthorizedBy")
 
   @@map("users")
 }
 
+// ─── Employee ─────────────────────────────────────────────────────────────────
 model Employee {
-  id                     String                 @id @default(uuid()) @db.Uuid
-  name                   String
-  role_title             String
-  hourly_rate            Decimal                @db.Decimal(10, 2)
-  hire_date              DateTime               @db.Date
-  is_active              Boolean                @default(true)
-  created_at             DateTime               @default(now())
-  updated_at             DateTime               @updatedAt
+  id          String   @id @default(uuid()) @db.Uuid
+  company_id  String?  @db.Uuid  // nullable only during migration window
+  company     Company? @relation(fields: [company_id], references: [id])
+  name        String
+  role_title  String
+  hourly_rate Decimal  @db.Decimal(10, 2)
+  hire_date   DateTime @db.Date
+  is_active   Boolean  @default(true)
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+
   users                  User[]
   attendance             Attendance[]
   paychecks              Paycheck[]
@@ -38,8 +69,11 @@ model Employee {
   @@map("employees")
 }
 
+// ─── Attendance ───────────────────────────────────────────────────────────────
 model Attendance {
   id           String   @id @default(uuid()) @db.Uuid
+  company_id   String?  @db.Uuid
+  company      Company? @relation(fields: [company_id], references: [id])
   employee_id  String   @db.Uuid
   employee     Employee @relation(fields: [employee_id], references: [id])
   date         DateTime @db.Date
@@ -50,12 +84,15 @@ model Attendance {
   @@map("attendance")
 }
 
+// ─── PayrollRun ───────────────────────────────────────────────────────────────
 model PayrollRun {
   id             String     @id @default(uuid()) @db.Uuid
+  company_id     String?    @db.Uuid
+  company        Company?   @relation(fields: [company_id], references: [id])
   period_start   DateTime   @db.Date
   period_end     DateTime   @db.Date
   date_processed DateTime?
-  status         String     @default("draft") // "draft" or "finalized"
+  status         String     @default("draft") // draft | finalized
   created_at     DateTime   @default(now())
   updated_at     DateTime   @updatedAt
   paychecks      Paycheck[]
@@ -63,6 +100,7 @@ model PayrollRun {
   @@map("payroll_runs")
 }
 
+// ─── Paycheck ─────────────────────────────────────────────────────────────────
 model Paycheck {
   id             String     @id @default(uuid()) @db.Uuid
   payroll_run_id String     @db.Uuid
@@ -78,28 +116,36 @@ model Paycheck {
   @@map("paychecks")
 }
 
+// ─── Product ──────────────────────────────────────────────────────────────────
 model Product {
-  id                     String                 @id @default(uuid()) @db.Uuid
-  name                   String
-  sku                    String                 @unique
-  quantity_in_stock      Int                    @default(0)
-  unit_cost              Decimal                @db.Decimal(10, 2)
-  unit_price             Decimal                @db.Decimal(10, 2)
-  low_stock_threshold    Int                    @default(10)
-  is_active              Boolean                @default(true)
-  created_at             DateTime               @default(now())
-  updated_at             DateTime               @updatedAt
+  id                  String   @id @default(uuid()) @db.Uuid
+  company_id          String?  @db.Uuid
+  company             Company? @relation(fields: [company_id], references: [id])
+  name                String
+  sku                 String   @unique  // globally unique for now; Phase 5 will make composite
+  quantity_in_stock   Int      @default(0)
+  unit_cost           Decimal  @db.Decimal(10, 2)
+  unit_price          Decimal  @db.Decimal(10, 2)
+  low_stock_threshold Int      @default(10)
+  is_active           Boolean  @default(true)
+  created_at          DateTime @default(now())
+  updated_at          DateTime @updatedAt
+
   inventory_transactions InventoryTransaction[]
+  cart_items             CartItem[]
 
   @@map("products")
 }
 
+// ─── InventoryTransaction ─────────────────────────────────────────────────────
 model InventoryTransaction {
   id            String    @id @default(uuid()) @db.Uuid
+  company_id    String?   @db.Uuid
+  company       Company?  @relation(fields: [company_id], references: [id])
   product_id    String    @db.Uuid
   product       Product   @relation(fields: [product_id], references: [id])
   change_amount Int
-  reason        String    // "sale", "restock", "damage", "adjustment"
+  reason        String    // sale | restock | damage | adjustment
   employee_id   String?   @db.Uuid
   employee      Employee? @relation(fields: [employee_id], references: [id])
   date          DateTime  @default(now())
@@ -107,4 +153,37 @@ model InventoryTransaction {
   updated_at    DateTime  @updatedAt
 
   @@map("inventory_transactions")
+}
+
+// ─── CartItem ─────────────────────────────────────────────────────────────────
+model CartItem {
+  id               String   @id @default(uuid()) @db.Uuid
+  company_id       String   @db.Uuid
+  company          Company  @relation(fields: [company_id], references: [id])
+  product_id       String   @db.Uuid
+  product          Product  @relation(fields: [product_id], references: [id])
+  quantity         Int
+  added_by_user_id String   @db.Uuid
+  created_at       DateTime @default(now())
+  updated_at       DateTime @updatedAt
+
+  @@map("cart_items")
+}
+
+// ─── CheckoutOverride ─────────────────────────────────────────────────────────
+model CheckoutOverride {
+  id                    String   @id @default(uuid()) @db.Uuid
+  company_id            String   @db.Uuid
+  company               Company  @relation(fields: [company_id], references: [id])
+  requested_by_user_id  String   @db.Uuid
+  requester             User     @relation("RequestedBy", fields: [requested_by_user_id], references: [id])
+  authorized_by_user_id String   @db.Uuid
+  authorizer            User     @relation("AuthorizedBy", fields: [authorized_by_user_id], references: [id])
+  action                String   // remove_item | finalize_bill
+  override_token_hash   String   @unique
+  is_consumed           Boolean  @default(false)
+  created_at            DateTime @default(now())
+  expires_at            DateTime
+
+  @@map("checkout_overrides")
 }
