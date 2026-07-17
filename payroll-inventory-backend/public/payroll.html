@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Payroll — PayrollPro</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+<div class="layout">
+  <aside id="sidebar" class="sidebar"></aside>
+  <main class="main">
+    <div class="page-header">
+      <h1>Payroll</h1>
+      <p class="page-subtitle">Run payroll and view paycheck history</p>
+    </div>
+
+    <div class="card section">
+      <div class="card-title">Run Payroll</div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label for="prStart">Period Start</label>
+          <input id="prStart" type="date">
+        </div>
+        <div class="form-group">
+          <label for="prEnd">Period End</label>
+          <input id="prEnd" type="date">
+        </div>
+        <div class="form-group">
+          <label for="prDeduct">Standard Deduction ($) <span style="color:var(--text-muted);font-weight:400;font-size:10px;">(optional, flat)</span></label>
+          <input id="prDeduct" type="number" min="0" step="0.01" placeholder="0.00">
+        </div>
+      </div>
+      <div class="form-actions" style="margin-top:14px;">
+        <button class="btn btn-success" onclick="runPayroll()">▶ Run Payroll</button>
+        <span class="td-muted" style="font-size:12px;">Calculates from attendance logs for the period.</span>
+      </div>
+    </div>
+
+    <!-- Results appear here after running -->
+    <div id="runResult"></div>
+
+    <div class="section">
+      <div class="section-header">
+        <span class="section-title">Payroll Runs</span>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Period</th><th>Status</th><th>Date Processed</th><th>Paychecks</th><th></th></tr></thead>
+          <tbody id="runsTable"><tr class="loading-row"><td colspan="5">Loading…</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Paycheck detail section (shown when "View" is clicked) -->
+    <div id="paycheckDetail" style="display:none;" class="section">
+      <div class="section-header">
+        <span class="section-title" id="paycheckTitle">Paychecks</span>
+        <button class="btn btn-outline btn-sm" onclick="closeDetail()">✕ Close</button>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Employee</th><th>Hours</th><th>Gross Pay</th><th>Deductions</th><th>Net Pay</th></tr></thead>
+          <tbody id="paycheckTable"></tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+</div>
+<script src="/js/api.js"></script>
+<script src="/js/payroll.js"></script>
+</body>
+</html>

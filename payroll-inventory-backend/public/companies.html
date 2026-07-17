@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Companies — PayrollPro</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+<div class="layout">
+  <aside id="sidebar" class="sidebar"></aside>
+  <main class="main">
+    <div class="page-header-row">
+      <div>
+        <h1>Companies</h1>
+        <p class="page-subtitle">Manage registered companies</p>
+      </div>
+      <button class="btn btn-primary" onclick="toggleForm()" id="addCompanyBtn" style="display:none;">＋ Add Company</button>
+    </div>
+
+    <div id="addForm" class="card section" style="display:none;">
+      <div class="card-title">New Company</div>
+      <div id="formError" class="alert alert-danger" style="display:none;margin-bottom:14px;"></div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label for="cName">Company Name</label>
+          <input id="cName" type="text" placeholder="e.g. Acme Corp">
+        </div>
+      </div>
+      <div class="form-actions" style="margin-top:16px;">
+        <button class="btn btn-primary" onclick="addCompany()">Create Company</button>
+        <button class="btn btn-outline" onclick="toggleForm()">Cancel</button>
+      </div>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Company ID</th><th>Name</th><th>Status</th><th>Created At</th><th></th></tr></thead>
+        <tbody id="companiesTable"><tr class="loading-row"><td colspan="5">Loading…</td></tr></tbody>
+      </table>
+    </div>
+
+  </main>
+</div>
+<script src="/js/api.js"></script>
+<script src="/js/companies.js"></script>
+</body>
+</html>

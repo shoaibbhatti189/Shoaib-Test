@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Users — PayrollPro</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+<div class="layout">
+  <aside id="sidebar" class="sidebar"></aside>
+  <main class="main">
+    <div class="page-header-row">
+      <div>
+        <h1>Users</h1>
+        <p class="page-subtitle">Manage user accounts and roles</p>
+      </div>
+      <button class="btn btn-primary" onclick="toggleForm()">＋ Add User</button>
+    </div>
+
+    <div id="addForm" class="card section" style="display:none;">
+      <div class="card-title">New User</div>
+      <div id="formError" class="alert alert-danger" style="display:none;margin-bottom:14px;"></div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label for="uName">Username</label>
+          <input id="uName" type="text" placeholder="e.g. jdoe123">
+        </div>
+        <div class="form-group">
+          <label for="uPass">Password</label>
+          <input id="uPass" type="password" placeholder="Temporary password">
+        </div>
+        <div class="form-group">
+          <label for="uRole">Role</label>
+          <select id="uRole">
+            <option value="employee">Employee</option>
+            <option value="manager">Manager</option>
+            <option value="hr">HR</option>
+            <option value="admin">Admin</option>
+            <option value="super_admin">Super Admin</option>
+          </select>
+        </div>
+        <div class="form-group" id="companyField">
+          <label for="uCompany">Company ID (Super Admin only)</label>
+          <input id="uCompany" type="text" placeholder="Company ID">
+        </div>
+      </div>
+      <div class="form-actions" style="margin-top:16px;">
+        <button class="btn btn-primary" onclick="addUser()">Create User</button>
+        <button class="btn btn-outline" onclick="toggleForm()">Cancel</button>
+      </div>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Username</th><th>Role</th><th>Company ID</th><th>Employee ID</th><th></th></tr></thead>
+        <tbody id="usersTable"><tr class="loading-row"><td colspan="5">Loading…</td></tr></tbody>
+      </table>
+    </div>
+
+    <!-- PIN Modal -->
+    <div id="pinModal" class="card section" style="display:none; border: 2px solid #0052cc; margin-top:20px;">
+      <div class="card-title" style="color: #0052cc;">Set PIN for Manager/Admin</div>
+      <p>Enter a 4-digit PIN for <strong id="pinUserName"></strong></p>
+      <div class="form-grid">
+        <div class="form-group">
+          <label for="newPin">New PIN</label>
+          <input id="newPin" type="password" placeholder="e.g. 1234">
+        </div>
+      </div>
+      <div class="form-actions" style="margin-top:16px;">
+        <button class="btn btn-primary" onclick="submitPin()">Set PIN</button>
+        <button class="btn btn-outline" onclick="cancelPin()">Cancel</button>
+      </div>
+    </div>
+
+  </main>
+</div>
+<script src="/js/api.js"></script>
+<script src="/js/users.js"></script>
+</body>
+</html>

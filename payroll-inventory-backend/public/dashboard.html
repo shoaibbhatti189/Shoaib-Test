@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard — PayrollPro</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+<div class="layout">
+  <aside id="sidebar" class="sidebar"></aside>
+  <main class="main">
+    <div class="page-header">
+      <h1>Dashboard</h1>
+      <p class="page-subtitle">Overview of your business at a glance</p>
+    </div>
+
+    <div class="stats-grid" id="statsGrid">
+      <div class="stat-card"><div class="stat-icon indigo">👥</div><div><div class="stat-label">Active Employees</div><div class="stat-value" id="statEmployees">—</div></div></div>
+      <div class="stat-card"><div class="stat-icon green">📦</div><div><div class="stat-label">Active Products</div><div class="stat-value" id="statProducts">—</div></div></div>
+      <div class="stat-card"><div class="stat-icon yellow">⚠️</div><div><div class="stat-label">Low Stock Items</div><div class="stat-value warning" id="statLowStock">—</div></div></div>
+      <div class="stat-card"><div class="stat-icon blue">🔄</div><div><div class="stat-label">Today's Transactions</div><div class="stat-value" id="statTxns">—</div></div></div>
+    </div>
+
+    <div id="lowStockAlert"></div>
+
+    <div class="section">
+      <div class="section-header">
+        <span class="section-title">Recent Inventory Activity</span>
+        <a href="/inventory.html" class="btn btn-outline btn-sm">View All</a>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Product</th><th>Change</th><th>Reason</th><th>Date</th></tr></thead>
+          <tbody id="recentTxns"><tr class="loading-row"><td colspan="4">Loading…</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+</div>
+<script src="/js/api.js"></script>
+<script src="/js/dashboard.js"></script>
+</body>
+</html>

@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Employees — PayrollPro</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+<div class="layout">
+  <aside id="sidebar" class="sidebar"></aside>
+  <main class="main">
+
+    <!-- Admin view -->
+    <div id="adminView" style="display:none;">
+      <div class="page-header-row">
+        <div>
+          <h1>Employees</h1>
+          <p class="page-subtitle">Manage your team members</p>
+        </div>
+        <button class="btn btn-primary" onclick="toggleForm()">＋ Add Employee</button>
+      </div>
+
+      <div id="addForm" class="card section" style="display:none;">
+        <div class="card-title">New Employee</div>
+        <div id="formError" class="alert alert-danger" style="display:none;margin-bottom:14px;"></div>
+        <div class="form-grid">
+          <div class="form-group">
+            <label for="empName">Full Name</label>
+            <input id="empName" type="text" placeholder="e.g. Sarah Johnson">
+          </div>
+          <div class="form-group">
+            <label for="empRole">Role / Job Title</label>
+            <input id="empRole" type="text" placeholder="e.g. Store Manager">
+          </div>
+          <div class="form-group">
+            <label for="empRate">Hourly Rate ($)</label>
+            <input id="empRate" type="number" min="0" step="0.01" placeholder="0.00">
+          </div>
+          <div class="form-group">
+            <label for="empHire">Hire Date</label>
+            <input id="empHire" type="date">
+          </div>
+        </div>
+        <div class="form-actions" style="margin-top:16px;">
+          <button class="btn btn-primary" onclick="addEmployee()">Create Employee</button>
+          <button class="btn btn-outline" onclick="toggleForm()">Cancel</button>
+        </div>
+      </div>
+
+
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Name</th><th>Role</th><th>Hourly Rate</th><th>Hire Date</th><th>Status</th><th></th></tr></thead>
+          <tbody id="empTable"><tr class="loading-row"><td colspan="6">Loading…</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Staff view (own profile) -->
+    <div id="staffView" style="display:none;">
+      <div class="page-header">
+        <h1>My Profile</h1>
+        <p class="page-subtitle">Your employee record</p>
+      </div>
+      <div id="profileCard"></div>
+    </div>
+
+  </main>
+</div>
+<script src="/js/api.js"></script>
+<script src="/js/employees.js"></script>
+</body>
+</html>

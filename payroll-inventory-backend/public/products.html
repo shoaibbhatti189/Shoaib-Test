@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Products — PayrollPro</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+<div class="layout">
+  <aside id="sidebar" class="sidebar"></aside>
+  <main class="main">
+    <div class="page-header-row">
+      <div>
+        <h1>Products</h1>
+        <p class="page-subtitle">Inventory catalog and stock levels</p>
+      </div>
+      <button id="addBtn" class="btn btn-primary" onclick="toggleForm()" style="display:none;">＋ Add Product</button>
+    </div>
+
+    <div id="lowStockBanner"></div>
+
+    <div id="addForm" class="card section" style="display:none;">
+      <div class="card-title">New Product</div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label for="pName">Product Name</label>
+          <input id="pName" type="text" placeholder="e.g. Organic Coffee Beans">
+        </div>
+        <div class="form-group">
+          <label for="pSku">SKU</label>
+          <input id="pSku" type="text" placeholder="e.g. COF-ORG-1LB">
+        </div>
+        <div class="form-group">
+          <label for="pCost">Unit Cost ($)</label>
+          <input id="pCost" type="number" min="0" step="0.01" placeholder="0.00">
+        </div>
+        <div class="form-group">
+          <label for="pPrice">Unit Price ($)</label>
+          <input id="pPrice" type="number" min="0" step="0.01" placeholder="0.00">
+        </div>
+        <div class="form-group">
+          <label for="pThreshold">Low Stock Threshold</label>
+          <input id="pThreshold" type="number" min="0" placeholder="10">
+        </div>
+      </div>
+      <div class="form-actions" style="margin-top:16px;">
+        <button class="btn btn-primary" onclick="addProduct()">Create Product</button>
+        <button class="btn btn-outline" onclick="toggleForm()">Cancel</button>
+      </div>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Name</th><th>SKU</th><th>In Stock</th><th>Unit Cost</th><th>Unit Price</th><th>Status</th><th id="actionCol"></th></tr></thead>
+        <tbody id="productsTable"><tr class="loading-row"><td colspan="7">Loading…</td></tr></tbody>
+      </table>
+    </div>
+  </main>
+</div>
+<script src="/js/api.js"></script>
+<script src="/js/products.js"></script>
+</body>
+</html>
