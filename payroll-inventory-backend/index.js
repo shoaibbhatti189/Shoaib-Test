@@ -64,6 +64,10 @@ app.use((err, req, res, _next) => {
   res.status(500).json({ error: 'An unexpected server error occurred.' });
 });
 
-app.listen(PORT, () => {
-  console.log(`Server running → http://localhost:${PORT}`);
-});
+if (process.env.NODE_ENV !== 'production') {
+  app.listen(PORT, () => {
+    console.log(`Server running → http://localhost:${PORT}`);
+  });
+}
+
+module.exports = app;
