@@ -4,6 +4,7 @@
   "description": "Payroll and Inventory Backend — Node/Express + Prisma + Supabase PostgreSQL",
   "main": "index.js",
   "scripts": {
+    "postinstall": "prisma generate",
     "start": "node index.js",
     "dev": "nodemon index.js"
   },
