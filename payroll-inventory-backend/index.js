@@ -44,6 +44,14 @@ app.use('/checkout',   checkoutRoutes);  // Phase 3
 app.use('/companies',  companyRoutes);   // Phase 4
 app.use('/users',      userRoutes);      // Phase 4
 
+// ── Client Config (Supabase) ────────────────────────────────────────
+app.get('/api/config', (req, res) => {
+  res.json({
+    supabaseUrl: process.env.SUPABASE_URL,
+    supabaseKey: process.env.SUPABASE_ANON_KEY
+  });
+});
+
 // ── Health check ──────────────────────────────────────────────────
 app.get('/health', async (req, res) => {
   try {

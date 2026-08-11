@@ -10,27 +10,33 @@
  */
 
 const jwt = require('jsonwebtoken');
+const prisma = require('../lib/prisma');
 
 const SECRET = process.env.JWT_SECRET || 'your-super-secret-jwt-key';
 
-const authenticateToken = (req, res, next) => {
+const authenticateToken = async (req, res, next) => {
   const authHeader = req.headers['authorization'];
   const token = authHeader && authHeader.split(' ')[1];
 
   if (!token)
     return res.status(401).json({ error: 'No token provided. Please log in.' });
 
-  jwt.verify(token, SECRET, (err, user) => {
-    if (err)
-      return res.status(403).json({ error: 'Invalid or expired token. Please log in again.' });
+  try {
+    const decoded = jwt.verify(token, SECRET);
+    
+    // Supabase JWT puts the user ID in the 'sub' claim
+    const userId = decoded.sub || decoded.id;
+    
+    // Fetch user profile from database to get role and company_id
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    if (!user) {
+      return res.status(403).json({ error: 'User profile not found.' });
+    }
 
     req.user = user;
 
     // ── Company scoping ───────────────────────────────────────────
-    // Fold scopeToCompany logic here so it can never be forgotten.
     if (user.role === 'super_admin') {
-      // Super admin bypasses company scope.
-      // Optionally accepts ?company_id query param to filter a specific company.
       req.companyId = req.query.company_id || null;
     } else {
       if (!user.company_id) {
@@ -42,7 +48,9 @@ const authenticateToken = (req, res, next) => {
     }
 
     next();
-  });
+  } catch (err) {
+    return res.status(403).json({ error: 'Invalid or expired token. Please log in again.' });
+  }
 };
 
 /**

@@ -16,18 +16,22 @@
     </div>
     <form class="login-form" id="loginForm">
       <div class="form-group">
-        <label for="username">Username</label>
-        <input id="username" type="text" placeholder="Enter username" autocomplete="username" required>
+        <label for="email">Email</label>
+        <input id="email" type="email" placeholder="Enter email" autocomplete="username" required>
       </div>
       <div class="form-group">
         <label for="password">Password</label>
         <input id="password" type="password" placeholder="Enter password" autocomplete="current-password" required>
       </div>
-      <button type="submit" class="btn btn-primary login-submit" id="submitBtn">Sign In</button>
+      <div style="display: flex; gap: 10px;">
+        <button type="submit" class="btn btn-primary login-submit" id="submitBtn">Sign In</button>
+        <button type="button" class="btn btn-secondary login-submit" id="signupBtn">Sign Up</button>
+      </div>
       <div class="error-text" id="errorMsg"></div>
     </form>
   </div>
 </div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="/js/api.js"></script>
 <script src="/js/login.js"></script>
 </body>
