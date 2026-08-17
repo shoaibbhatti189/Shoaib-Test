@@ -2,7 +2,22 @@
    api.js — Auth helpers, fetch wrapper, sidebar
    ───────────────────────────────────────────── */
 
-function getToken()    { return localStorage.getItem('token'); }
+function getToken() {
+  let token = localStorage.getItem('token');
+  // Attempt to grab the latest token directly from Supabase's persisted storage
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
+    if (key.startsWith('sb-') && key.endsWith('-auth-token')) {
+      try {
+        const session = JSON.parse(localStorage.getItem(key));
+        if (session && session.access_token) {
+          token = session.access_token;
+        }
+      } catch (e) {}
+    }
+  }
+  return token;
+}
 function getRole()     { return localStorage.getItem('role'); }
 function getUsername() { return localStorage.getItem('username'); }
 function getEmpId()    { return localStorage.getItem('employee_id'); }
