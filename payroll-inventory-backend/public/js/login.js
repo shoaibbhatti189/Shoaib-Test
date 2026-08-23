@@ -13,6 +13,8 @@ async function initSupabase() {
         localStorage.setItem('token', session.access_token);
         window.location.href = '/dashboard.html';
       }
+    } else {
+      console.warn('Supabase URL or Key missing from /api/config. Check Vercel Environment Variables.');
     }
   } catch (err) {
     console.error('Failed to load config', err);
@@ -32,6 +34,11 @@ document.getElementById('loginForm').addEventListener('submit', async (e) => {
     errEl.textContent = 'Please enter both email and password.';
     return;
   }
+  
+  if (!supabase) {
+    errEl.textContent = 'Server configuration error: Vercel environment variables missing.';
+    return;
+  }
 
   btn.disabled = true;
   btn.textContent = 'Signing in…';
@@ -48,7 +55,8 @@ document.getElementById('loginForm').addEventListener('submit', async (e) => {
     localStorage.setItem('token', data.session.access_token);
     window.location.href = '/dashboard.html';
   } catch (err) {
-    errEl.textContent = 'Login failed. Check your credentials.';
+    console.error('Login Error:', err);
+    errEl.textContent = err.message || 'Login failed. Check your credentials.';
     btn.disabled = false;
     btn.textContent = 'Sign In';
   }
@@ -71,6 +79,11 @@ document.getElementById('signupBtn').addEventListener('click', async (e) => {
     return;
   }
 
+  if (!supabase) {
+    errEl.textContent = 'Server configuration error: Vercel environment variables missing.';
+    return;
+  }
+
   btn.disabled = true;
   btn.textContent = 'Signing up…';
   errEl.textContent = '';
@@ -88,10 +101,11 @@ document.getElementById('signupBtn').addEventListener('click', async (e) => {
          throw error;
       }
     } else {
-      errEl.textContent = 'Success! You can now sign in.';
+      errEl.textContent = 'Success! You can now sign in (check your email to verify if required).';
     }
   } catch (err) {
-    errEl.textContent = 'Signup failed. Please try again.';
+    console.error('Signup Error:', err);
+    errEl.textContent = err.message || 'Signup failed. Please try again.';
   } finally {
     btn.disabled = false;
     btn.textContent = 'Sign Up';
