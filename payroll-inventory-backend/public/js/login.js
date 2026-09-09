@@ -1,42 +1,17 @@
-let supabase = null;
-
-async function initSupabase() {
-  try {
-    const res = await fetch('/api/config');
-    const config = await res.json();
-    if (config.supabaseUrl && config.supabaseKey) {
-      supabase = window.supabase.createClient(config.supabaseUrl, config.supabaseKey);
-      
-      // Check session
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session) {
-        localStorage.setItem('token', session.access_token);
-        window.location.href = '/dashboard.html';
-      }
-    } else {
-      console.warn('Supabase URL or Key missing from /api/config. Check Vercel Environment Variables.');
-    }
-  } catch (err) {
-    console.error('Failed to load config', err);
-  }
+// If they are already logged in, redirect
+if (localStorage.getItem('token')) {
+  window.location.href = '/dashboard.html';
 }
-
-initSupabase();
 
 document.getElementById('loginForm').addEventListener('submit', async (e) => {
   e.preventDefault();
   const btn = document.getElementById('submitBtn');
   const errEl = document.getElementById('errorMsg');
-  const email = document.getElementById('email').value.trim();
+  const username = document.getElementById('username').value.trim();
   const password = document.getElementById('password').value;
 
-  if (!email || !password) {
-    errEl.textContent = 'Please enter both email and password.';
-    return;
-  }
-  
-  if (!supabase) {
-    errEl.textContent = 'Server configuration error: Vercel environment variables missing.';
+  if (!username || !password) {
+    errEl.textContent = 'Please enter both username and password.';
     return;
   }
 
@@ -45,14 +20,24 @@ document.getElementById('loginForm').addEventListener('submit', async (e) => {
   errEl.textContent = '';
 
   try {
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
+    const res = await fetch('/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password })
     });
+    
+    const data = await res.json();
+    
+    if (!res.ok) {
+      throw new Error(data.error || 'Login failed.');
+    }
 
-    if (error) throw error;
+    localStorage.setItem('token', data.token);
+    if (data.role) localStorage.setItem('role', data.role);
+    if (data.username) localStorage.setItem('username', data.username);
+    if (data.company_id) localStorage.setItem('company_id', data.company_id);
+    if (data.employee_id) localStorage.setItem('employee_id', data.employee_id);
 
-    localStorage.setItem('token', data.session.access_token);
     window.location.href = '/dashboard.html';
   } catch (err) {
     console.error('Login Error:', err);
@@ -66,47 +51,37 @@ document.getElementById('signupBtn').addEventListener('click', async (e) => {
   e.preventDefault();
   const btn = document.getElementById('signupBtn');
   const errEl = document.getElementById('errorMsg');
-  const email = document.getElementById('email').value.trim();
+  const username = document.getElementById('username').value.trim();
   const password = document.getElementById('password').value;
 
-  if (!email || !password) {
-    errEl.textContent = 'Please enter both email and password.';
+  if (!username || !password) {
+    errEl.textContent = 'Please enter both username and password to create an admin account.';
     return;
   }
   
-  if (password.length < 6) {
-    errEl.textContent = 'Password needs at least 6 characters.';
-    return;
-  }
-
-  if (!supabase) {
-    errEl.textContent = 'Server configuration error: Vercel environment variables missing.';
-    return;
-  }
-
   btn.disabled = true;
   btn.textContent = 'Signing up…';
   errEl.textContent = '';
 
   try {
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
+    const res = await fetch('/setup-admin', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password })
     });
-
-    if (error) {
-      if (error.message.includes('already registered') || error.status === 422) {
-         errEl.textContent = 'An account with this email already exists.';
-      } else {
-         throw error;
-      }
-    } else {
-      errEl.textContent = 'Success! You can now sign in (check your email to verify if required).';
+    
+    const data = await res.json();
+    
+    if (!res.ok) {
+      throw new Error(data.error || 'Signup failed.');
     }
+
+    errEl.textContent = 'Success! You can now sign in.';
+    btn.disabled = false;
+    btn.textContent = 'Sign Up';
   } catch (err) {
     console.error('Signup Error:', err);
     errEl.textContent = err.message || 'Signup failed. Please try again.';
-  } finally {
     btn.disabled = false;
     btn.textContent = 'Sign Up';
   }
